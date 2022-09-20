@@ -4,6 +4,9 @@ from typing import Optional
 from pydantic import BaseSettings, AnyHttpUrl, PostgresDsn
 
 
+DB_FILE = Path(__file__).parent / "katalogus.db"
+
+
 class Settings(BaseSettings):
     base_dir: Path = Path(__file__).parent.resolve()
     worker_concurrency: int = 10
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     queue_uri: str = "amqp://"
 
     enable_db: bool = True
-    katalogus_db_uri: PostgresDsn = "postgresql://xx:xx@host:5432/katalogus"
+    katalogus_db_uri: str = f"sqlite:///{str(DB_FILE)}"
 
     katalogus_api: AnyHttpUrl = "http://localhost:8003"
 

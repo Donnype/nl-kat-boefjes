@@ -1,14 +1,8 @@
 import logging
 from typing import Dict, List
-from uuid import uuid4
-
-import pydantic
-import requests
 from octopoes.models import Reference
 
-from app import app
-from boefjes.models import BOEFJES_DIR, Boefje
-from config import settings
+from boefjes.models import BOEFJES_DIR
 from job import BoefjeMeta, NormalizerMeta
 from job_handler import (
     handle_boefje_job,
@@ -19,21 +13,11 @@ from job_handler import (
 )
 from katalogus.boefjes import resolve_boefjes, resolve_normalizers
 from katalogus.models import PluginType, Normalizer
-from lxd.lxd_runner import LXDBoefjeJobRunner, get_plugin
 from runner import LocalBoefjeJobRunner
 
 logger = logging.getLogger(__name__)
 
 
-def get_all_plugins(organisation: str) -> List[PluginType]:
-    res = requests.get(
-        f"{settings.katalogus_api}/v1/organisations/{organisation}/plugins"
-    )
-
-    return pydantic.parse_raw_as(List[PluginType], res.content)
-
-
-@app.task(queue="boefjes")
 def handle_boefje(job: Dict) -> Dict:
     boefje_meta = BoefjeMeta(**job)
 
@@ -43,39 +27,13 @@ def handle_boefje(job: Dict) -> Dict:
     )
     boefje_meta.arguments["input"] = serialize_ooi(input_ooi)
 
-    if "/" not in boefje_meta.boefje.id:
-        boefjes = resolve_boefjes(BOEFJES_DIR)
-        boefje = boefjes[boefje_meta.boefje.id]
+    boefjes = resolve_boefjes(BOEFJES_DIR)
+    boefje = boefjes[boefje_meta.boefje.id]
 
-        logger.info("Running local boefje plugin")
-        updated_job = handle_boefje_job(
-            boefje_meta, LocalBoefjeJobRunner(boefje_meta, boefje, BOEFJES_DIR.name)
-        )
-
-        dispatch_normalizers(boefje, updated_job)
-
-        return updated_job.dict()
-
-    repository, plugin_id = boefje_meta.boefje.id.split("/")
-    plugin = get_plugin(
-        boefje_meta.organization, repository, plugin_id, boefje_meta.boefje.version
-    )
-
-    logger.info("Running remote boefje plugin")
+    logger.info("Running local boefje plugin")
     updated_job = handle_boefje_job(
-        boefje_meta, LXDBoefjeJobRunner(boefje_meta, plugin)
+        boefje_meta, LocalBoefjeJobRunner(boefje_meta, boefje, BOEFJES_DIR.name)
     )
-    all_plugins = get_all_plugins(boefje_meta.organization)
-    normalizer_jobs = normalizers_for_meta(updated_job, all_plugins)
-
-    for normalizer_meta in normalizer_jobs:
-        normalizer_meta = {
-            "id": str(uuid4()),
-            "normalizer": {"name": normalizer_meta.id},
-            "boefje_meta": boefje_meta.dict(),
-        }
-        logger.info("Dispatching normalizer: %s", normalizer_meta["normalizer"])
-        handle_normalizer.delay(normalizer_meta)
 
     return updated_job.dict()
 
@@ -100,28 +58,6 @@ def normalizers_for_meta(
     ]
 
 
-def dispatch_normalizers(boefje: Boefje, updated_job: BoefjeMeta):
-    all_normalizers = resolve_normalizers(BOEFJES_DIR)
-
-    normalizers = {
-        normalize_id: normalizer
-        for normalize_id, normalizer in all_normalizers.items()
-        if boefje.id in normalizer.consumes
-    }
-
-    logging.info(f"Dispatching normalizers: {normalizers}")
-
-    for normalizer in normalizers:
-        normalizer_meta = {
-            "id": str(uuid4()),
-            "normalizer": {"name": normalizer},
-            "boefje_meta": updated_job.dict(),
-        }
-
-        handle_normalizer.delay(normalizer_meta)
-
-
-@app.task(queue="normalizers")
 def handle_normalizer(normalizer_job: Dict) -> None:
     data = normalizer_job.copy()
     boefje_meta = BoefjeMeta(**data.pop("boefje_meta"))

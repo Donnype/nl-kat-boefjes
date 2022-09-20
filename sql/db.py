@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Type, Callable, Any, Iterator
 
 from sqlalchemy import create_engine
@@ -17,7 +18,11 @@ SQL_BASE = declarative_base()
 def get_engine() -> Engine:
     logger.info("Connecting to database..")
 
-    engine = create_engine(settings.katalogus_db_uri, pool_pre_ping=True, pool_size=25)
+    engine = create_engine(
+        settings.katalogus_db_uri,
+        pool_pre_ping=True,
+        connect_args={"check_same_thread": False},
+    )
 
     logger.info("Connected to database")
 

@@ -82,7 +82,7 @@ def handle_boefje_job(
             raw_output = job_output.data
             mime_types = job_output.mime_types
         except Exception as exc:
-            logger.info(
+            logger.exception(
                 "Error while running boefje %s[%s]",
                 boefje_meta.boefje.id,
                 boefje_meta.id,

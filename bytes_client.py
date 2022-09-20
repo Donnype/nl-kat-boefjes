@@ -3,9 +3,13 @@ from functools import wraps
 from typing import Callable, Dict, Union, Any, Set
 
 import requests
+from datetime import datetime
 from requests.models import HTTPError
 
 from job import BoefjeMeta, NormalizerMeta
+from scheduler.models import NormalizerMetaReceivedEvent, RawDataReceivedEvent, RawData
+from scheduler.connectors.listeners.listeners import QUEUES
+
 
 BYTES_API_CLIENT_VERSION = "0.3"
 
@@ -41,7 +45,77 @@ def retry_with_login(function: ClientSessionMethod) -> ClientSessionMethod:
     return typing.cast(ClientSessionMethod, wrapper)
 
 
+BOEFJE_METAS = {}
+NORMALIZER_METAS = {}
+RAWS = {}
+
+
 class BytesAPIClient:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def login(self):
+        pass
+
+    def save_boefje_meta(self, boefje_meta: BoefjeMeta) -> None:
+        BOEFJE_METAS[boefje_meta.id] = boefje_meta
+
+    def get_boefje_meta(self, boefje_meta_id: str) -> BoefjeMeta:
+        return BOEFJE_METAS[boefje_meta_id]
+
+    def save_normalizer_meta(self, normalizer_meta: NormalizerMeta) -> None:
+        NORMALIZER_METAS[normalizer_meta.id] = normalizer_meta
+        queue_name = f"{normalizer_meta.boefje_meta.organization}__normalizer_meta_received"
+
+        if queue_name not in QUEUES:
+            QUEUES[queue_name] = []
+
+        QUEUES[queue_name].append(
+            NormalizerMetaReceivedEvent(
+                created_at=datetime.now(),
+                organization=normalizer_meta.boefje_meta.organization,
+                normalizer_meta=normalizer_meta,
+            ).dict()
+        )
+
+    def get_normalizer_meta(self, normalizer_meta_id: str) -> NormalizerMeta:
+        return NORMALIZER_METAS[normalizer_meta_id]
+
+    def save_raw(
+        self, boefje_meta_id: str, raw: bytes, mime_types: Set[str] = None
+    ) -> None:
+        if not mime_types:
+            mime_types = set()
+
+        if isinstance(raw, str):
+            raw = raw.encode()
+
+        RAWS[boefje_meta_id] = (raw, mime_types)
+        boefje_meta = self.get_boefje_meta(boefje_meta_id)
+
+        queue_name = f"{boefje_meta.organization}__raw_file_received"
+
+        if queue_name not in QUEUES:
+            QUEUES[queue_name] = []
+
+        QUEUES[queue_name].append(
+            RawDataReceivedEvent(
+                created_at=datetime.now(),
+                organization=boefje_meta.organization,
+                raw_data=RawData(
+                    boefje_meta=boefje_meta,
+                    mime_types=[{"value": m} for m in mime_types],
+                ),
+            ).dict()
+        )
+
+    def get_raw(self, boefje_meta_id: str) -> bytes:
+        raw, mime_types = RAWS[boefje_meta_id]
+
+        return raw
+
+
+class BytesAPIClientV1:
     def __init__(self, base_url: str, username: str, password: str):
         self._session = BytesAPISession(base_url)
         self.credentials = {
