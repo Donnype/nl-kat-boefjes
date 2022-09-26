@@ -8,6 +8,8 @@ from datetime import datetime
 from requests.models import HTTPError
 
 from boefjes.job import BoefjeMeta, NormalizerMeta
+from boefjes.clients.data import BOEFJE_METAS, NORMALIZER_METAS, RAWS
+
 from scheduler.models import NormalizerMetaReceivedEvent, RawDataReceivedEvent, RawData
 from scheduler.connectors.listeners.listeners import QUEUES
 
@@ -45,11 +47,6 @@ def retry_with_login(function: ClientSessionMethod) -> ClientSessionMethod:
             return function(self, *args, **kwargs)
 
     return typing.cast(ClientSessionMethod, wrapper)
-
-
-BOEFJE_METAS = {}
-NORMALIZER_METAS = {}
-RAWS = {}
 
 
 class BytesAPIClient:

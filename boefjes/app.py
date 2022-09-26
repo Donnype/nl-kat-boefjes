@@ -5,12 +5,10 @@ from typing import Callable
 
 import time
 
-from celery import Celery
 from requests import HTTPError as RequestHTTPError
 from requests import ConnectionError
 from urllib3.exceptions import HTTPError
 
-from boefjes import celery_config
 from boefjes.clients.scheduler_client import (
     SchedulerAPIClient,
     SchedulerClientInterface,
@@ -20,10 +18,6 @@ from boefjes.job_handler import BoefjeMetaHandler, NormalizerMetaHandler
 from boefjes.runtime import ItemHandler, RuntimeManager, StopWorking
 
 logger = logging.getLogger(__name__)
-
-
-app = Celery()
-app.config_from_object(celery_config)
 
 
 class SchedulerRuntimeManager(RuntimeManager):
@@ -113,33 +107,6 @@ def start_working(
         time.sleep(settings.poll_interval)
 
 
-class CeleryRuntimeManager(RuntimeManager):
-    def __init__(self, settings: Settings, log_level: str):
-        self.settings = settings
-        self.log_level = log_level
-
-    def run(self, queue: RuntimeManager.Queue) -> None:
-        queue_names = {
-            RuntimeManager.Queue.BOEFJES.value: self.settings.queue_name_boefjes,
-            RuntimeManager.Queue.NORMALIZERS.value: self.settings.queue_name_normalizers,
-        }
-
-        app.worker_main(
-            [
-                "--app",
-                "boefjes.tasks",
-                "worker",
-                "--loglevel",
-                self.log_level,
-                "--events",
-                "--queues",
-                [queue_names.get(queue.value)],
-                "--hostname",
-                f"{queue.value}@%h",
-            ]
-        )
-
-
 def get_runtime_manager(
     settings: Settings, queue: RuntimeManager.Queue, log_level: str
 ) -> RuntimeManager:
@@ -162,4 +129,3 @@ def get_runtime_manager(
             log_level,
         )
 
-    return CeleryRuntimeManager(settings, log_level)

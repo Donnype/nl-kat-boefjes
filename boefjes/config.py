@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseSettings, AnyHttpUrl, PostgresDsn
 
 
-DB_FILE = Path(__file__).parent / "katalogus.db"
+DB_FILE = Path(__file__).parent.parent / "katalogus.db"
 
 
 class Settings(BaseSettings):

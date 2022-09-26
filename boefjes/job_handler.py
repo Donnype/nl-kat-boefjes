@@ -12,7 +12,6 @@ from requests import RequestException
 
 from boefjes.runtime import ItemHandler
 from boefjes.katalogus.boefjes import resolve_boefjes, resolve_normalizers
-from boefjes.lxd.lxd_runner import LXDBoefjeJobRunner
 
 from boefjes.plugins.models import Normalizer, BOEFJES_DIR
 from boefjes.clients.bytes_client import BytesAPIClient
@@ -114,17 +113,7 @@ def handle_boefje_meta(boefje_meta: BoefjeMeta):
         job_runner = LocalBoefjeJobRunner(boefje_meta, boefje, environment)
         return handle_boefje_job(boefje_meta, job_runner).dict()
 
-    repository, plugin_id = boefje_meta.boefje.id.split("/")
-    plugin = get_plugin(
-        boefje_meta.organization, repository, plugin_id, boefje_meta.boefje.version
-    )
-
-    logger.info("Running remote boefje plugin")
-    updated_job = handle_boefje_job(
-        boefje_meta, LXDBoefjeJobRunner(boefje_meta, plugin)
-    )
-
-    return updated_job.dict()
+    raise ValueError("Remote plugins not supported")
 
 
 def handle_boefje_job(
