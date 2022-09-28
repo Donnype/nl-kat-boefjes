@@ -13,7 +13,3 @@ class Environment(BaseSettings):
 class Context:
     def __init__(self, env: Environment):
         self.env = env
-
-
-def get_context() -> Context:
-    return Context(Environment())

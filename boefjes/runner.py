@@ -7,6 +7,8 @@ from typing import Union, Any, Tuple, Iterator, List, Protocol, cast, Dict, Opti
 
 import pydantic
 import requests
+
+from boefjes.katalogus.dependencies.settings import get_settings_service
 from octopoes.models import OOI
 
 from boefjes.plugins.models import Boefje, Normalizer, RawData
@@ -29,6 +31,12 @@ class TemporaryEnvironment:
 
 
 def get_environment_settings(
+    boefje_meta: BoefjeMeta, boefje_resource: Boefje
+) -> Dict[str, str]:
+    return next(get_settings_service(boefje_meta.organization)).get_all(boefje_meta.organization, boefje_meta.boefje.id)
+
+
+def get_environment_settings_v1(
     boefje_meta: BoefjeMeta, boefje_resource: Boefje
 ) -> Dict[str, str]:
     environment = requests.get(

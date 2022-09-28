@@ -22,7 +22,6 @@ from boefjes.runner import (
     BoefjeJobRunner,
     get_environment_settings,
     LocalBoefjeJobRunner,
-    get_plugin,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,11 +103,12 @@ def handle_boefje_meta(boefje_meta: BoefjeMeta):
 
         logger.info("Running local boefje plugin")
 
+        environment = {}
+
         try:
             environment = get_environment_settings(boefje_meta, boefje)
         except RequestException:
             logger.error("Error getting environment settings", exc_info=True)
-            environment = {}
 
         job_runner = LocalBoefjeJobRunner(boefje_meta, boefje, environment)
         return handle_boefje_job(boefje_meta, job_runner).dict()

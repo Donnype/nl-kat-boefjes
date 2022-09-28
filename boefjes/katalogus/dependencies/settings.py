@@ -1,11 +1,10 @@
 import logging
 from typing import Dict, Iterator
 
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from boefjes.config import settings
-from boefjes.katalogus.dependencies.context import get_context
+from boefjes.katalogus.dependencies.context import Context, Environment
 from boefjes.katalogus.dependencies.encryption import (
     EncryptMiddleware,
     NaclBoxMiddleware,
@@ -58,8 +57,9 @@ class SettingsService:
 
 
 def get_settings_service(
-    organisation_id: str, context=Depends(get_context)
+    organisation_id: str
 ) -> Iterator[SettingsService]:
+    context = Context(Environment())
     encrypter = IdentityMiddleware()
     if context.env.encryption_middleware == EncryptionMiddleware.NACL_SEALBOX:
         encrypter = NaclBoxMiddleware(
