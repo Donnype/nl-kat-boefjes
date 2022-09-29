@@ -71,7 +71,7 @@ def parse_module_attribute(package_dir: Path, packages, attr: str) -> List:
                 modules_attrs.append(getattr(module, attr))
 
         except ModuleNotFoundError:
-            logging.warning('module "%s" has no attribute %s', package.name, attr)
+            logging.debug('module "%s" has no attribute %s', package.name, attr)
 
     return modules_attrs
 
